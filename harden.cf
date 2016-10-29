@@ -1,0 +1,127 @@
+body common control
+{
+    bundlesequence => { 
+                        "harden_common",
+                        "harden" 
+    };
+
+    
+    inputs => {
+            "/var/cfengine/inputs/lib/3.6/stdlib.cf"
+    };
+
+}
+
+bundle common harden_common
+{
+    meta:
+        "tags" slist => { "autorun" };
+
+    vars:
+        "files_basedir" string => "$(sys.inputs)/files";
+}
+
+bundle agent harden
+{
+    meta:
+        "tags" slist => { "autorun" };
+
+    vars:
+        "user" slist => { "martin" };
+
+    methods:
+        "setup_user"     usebundle => setup_user($(user));
+        "configure_ssh"  usebundle => configure_ssh;
+        "setup_fail2ban" usebundle => setup_fail2ban;
+        "setup_firewall" usebundle => setup_firewall;
+        "setup_updates"  usebundle => setup_updates;
+        "setup_logwatch" usebundle => setup_logwatch;
+
+}
+
+bundle agent setup_user(user)
+{
+    vars:
+        "homedir" string => "/home/$(user)";
+
+    files:
+        "$(homedir)/."
+            create => "true",
+            perms => mog("$(user)", "$(user)", 755);
+        "/$(homedir)/.ssh/."
+            create => "true",
+            perms => mog("$(user)", "$(user)", 750);
+        "/$(homedir)/.ssh/authorized_keys"
+            copy_from => local_dcp("$(files_basedir)/$(this.promiser)"),
+            perms => mog("$(user)", "$(user)", 600);
+            
+    users:
+        "$(user)"
+            policy => "present",
+            description => "$(user)",
+            home_dir => "/home/$(user)",
+            #ugh user promises don't create groups
+            group_primary => "$(user)",
+            groups_secondary => { "sudo" },
+            shell => "/bin/bash";
+}
+
+bundle agent configure_ssh
+{
+    packages:
+        "openssh-server"
+            package_policy => "add",
+            package_method => apt,
+            package_version => "latest";
+            
+}
+
+bundle agent setup_firewall
+{
+    vars:
+        "allow_ports" ilist => { 22, 80, 443 };
+
+    packages:
+        "ufw"
+            package_policy => "add",
+            package_method => apt,
+            package_version => "latest";
+
+    methods:
+        #safer to only allow your IP to 22
+        # implicit iteration needs variable on the left side to work
+        "open_port_$(allow_ports)" usebundle => open_firewall_port($(allow_ports));
+
+    commands:
+        "/usr/sbin/ufw"
+            args => "enable";
+}
+
+bundle agent open_firewall_port(port)
+{
+    commands:
+        "/usr/sbin/ufw allow $(port)";
+}
+
+bundle agent setup_logwatch
+{
+    files:
+        "/etc/cron.daily/00logwatch"
+            copy_from => local_dcp("$(files_basedir)/$(this.promiser)"),
+            perms => system_owned("0644");
+
+    packages:
+        "logwatch"
+            package_policy => "add",
+            package_method => apt,
+            package_version => "latest";
+}
+
+bundle agent setup_fail2ban
+{
+    packages:
+        "fail2ban"
+            package_policy => "add",
+            package_method => apt,
+            package_version => "latest";
+}

@@ -1,0 +1,9 @@
+{{#classes.teamgehrke_com}}
+domain {{vars.resolv_conf.domain}}
+nameserver {{vars.resolv_conf.namesever}}
+{{/classes.teamgehrke_com}}
+{{^classes.teamgehrke_com}}
+domain local.com
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+{{/classes.teamgehrke_com}}

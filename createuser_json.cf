@@ -1,0 +1,22 @@
+bundle agent create_user
+{
+    vars:
+        "json_file" string => "$(sys.workdir)/data/users.json";
+        "user_data" data => readjson("$(json_file)", inf);
+        "users" slist => getindices("user_data");
+
+    files:
+        "/home/$(users)/."
+            create => "true",
+            perms => mog("$(users)", "$(users)", 0755);
+
+    users:
+        "$(users)"
+            policy => "present",
+            description => "$(user_data[$(users)]["desc"])",
+            shell => "$(user_data[$(users)]["shell"])",
+            group_primary => "$(user_data[$(users)]["group_primary"])",
+            groups_secondary => getvalues("user_data[$(users)]["group_secondary"]");
+
+}
+
