@@ -30,7 +30,7 @@ bundle agent harden
         "user" slist => { "martin" };
 
     methods:
-        "setup_user"     usebundle => setup_user($(user));
+        "setup_user_$(user)"     usebundle => setup_user($(user));
         "configure_ssh"  usebundle => configure_ssh;
         "setup_fail2ban" usebundle => setup_fail2ban;
         "setup_firewall" usebundle => setup_firewall;
